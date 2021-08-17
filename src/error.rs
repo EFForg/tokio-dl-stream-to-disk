@@ -25,6 +25,24 @@ impl Error {
     pub fn kind(&self) -> &ErrorKind {
         &self.kind
     }
+
+    pub fn into_inner_io(self) -> Option<IOError> {
+	match self.kind {
+	    ErrorKind::FileExists => None,
+	    ErrorKind::DirectoryMissing => None,
+	    ErrorKind::IO(err) => Some(err),
+	    ErrorKind::Other(_) => None,
+	}
+    }
+
+    pub fn into_inner_other(self) -> Option<Box<dyn StdError>> {
+	match self.kind {
+	    ErrorKind::FileExists => None,
+	    ErrorKind::DirectoryMissing => None,
+	    ErrorKind::IO(_) => None,
+	    ErrorKind::Other(err) => Some(err),
+	}
+    }
 }
 
 impl From<IOError> for Error {
