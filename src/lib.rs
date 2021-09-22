@@ -22,6 +22,9 @@ use std::path::Path;
 use bytes::Bytes;
 use futures_util::stream::Stream;
 use futures_util::StreamExt;
+
+#[cfg(feature="sha256sum")]
+use sha2::{Sha256, Digest};
 use tokio_util::io::StreamReader;
 
 use crate::error::{Error as TDSTDError, ErrorKind as TDSTDErrorKind};
@@ -62,6 +65,41 @@ pub async fn download<S: Into<String>>(url: S, dst_path: &Path, fname: S) -> Res
             }
         }
         Ok(())
+    } else {
+        Err(TDSTDError::new(TDSTDErrorKind::DirectoryMissing))
+    }
+}
+
+#[cfg(feature="sha256sum")]
+pub async fn download_and_return_sha256sum<S: Into<String>>(url: S, dst_path: &Path, fname: S) -> Result<Vec<u8>, TDSTDError> {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    let fname = dst_path.join(fname.into());
+    if fname.is_file() {
+        return Err(TDSTDError::new(TDSTDErrorKind::FileExists));
+    }
+
+    if dst_path.is_dir() {
+        let mut http_async_reader = {
+            let http_stream = http_stream(&url.into()).await?;
+            StreamReader::new(http_stream)
+        };
+
+        let mut dest = {
+            tokio::fs::File::create(fname).await?
+        };
+        let mut buf = [0; 8 * 1024];
+        let mut hasher = Sha256::new();
+        loop {
+            let num_bytes = http_async_reader.read(&mut buf).await?;
+            if num_bytes > 0 {
+                dest.write(&mut buf[0..num_bytes]).await?;
+                hasher.update(&buf[0..num_bytes]);
+            } else {
+                break;
+            }
+        }
+        Ok(hasher.finalize().to_vec())
     } else {
         Err(TDSTDError::new(TDSTDErrorKind::DirectoryMissing))
     }
