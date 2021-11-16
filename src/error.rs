@@ -1,11 +1,12 @@
 use std::error::Error as StdError;
-use std::io::Error as IOError;
+use std::io::{Error as IOError, ErrorKind as IOErrorKind};
 use std::fmt;
 
 #[derive(Debug)]
 pub enum ErrorKind {
     FileExists,
     DirectoryMissing,
+    PermissionDenied,
     IO(IOError),
     Other(Box<dyn StdError>),
 }
@@ -30,6 +31,7 @@ impl Error {
 	match self.kind {
 	    ErrorKind::FileExists => None,
 	    ErrorKind::DirectoryMissing => None,
+	    ErrorKind::PermissionDenied => None,
 	    ErrorKind::IO(err) => Some(err),
 	    ErrorKind::Other(_) => None,
 	}
@@ -39,6 +41,7 @@ impl Error {
 	match self.kind {
 	    ErrorKind::FileExists => None,
 	    ErrorKind::DirectoryMissing => None,
+	    ErrorKind::PermissionDenied => None,
 	    ErrorKind::IO(_) => None,
 	    ErrorKind::Other(err) => Some(err),
 	}
@@ -47,9 +50,15 @@ impl Error {
 
 impl From<IOError> for Error {
     fn from(err: IOError) -> Error {
-        Error {
-            kind: ErrorKind::IO(err),
-	}
+        if err.kind() == IOErrorKind::PermissionDenied {
+            Error {
+                kind: ErrorKind::PermissionDenied,
+            }
+        } else {
+            Error {
+                kind: ErrorKind::IO(err),
+            }
+        }
     }
 }
 
@@ -66,6 +75,7 @@ impl fmt::Display for Error {
         match self.kind() {
             ErrorKind::FileExists => write!(f, "File already exists"),
             ErrorKind::DirectoryMissing => write!(f, "Destination path provided is not a valid directory"),
+            ErrorKind::PermissionDenied => write!(f, "Cannot create file: permission denied"),
             ErrorKind::IO(err) => err.fmt(f),
             ErrorKind::Other(err) => err.fmt(f),
         }

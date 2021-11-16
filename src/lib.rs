@@ -52,9 +52,7 @@ pub async fn download<S: Into<String>>(url: S, dst_path: &Path, fname: S) -> Res
             StreamReader::new(http_stream)
         };
 
-        let mut dest = {
-            tokio::fs::File::create(fname).await?
-        };
+        let mut dest = tokio::fs::File::create(fname).await?;
         let mut buf = [0; 8 * 1024];
         loop {
             let num_bytes = http_async_reader.read(&mut buf).await?;
@@ -85,9 +83,7 @@ pub async fn download_and_return_sha256sum<S: Into<String>>(url: S, dst_path: &P
             StreamReader::new(http_stream)
         };
 
-        let mut dest = {
-            tokio::fs::File::create(fname).await?
-        };
+        let mut dest = tokio::fs::File::create(fname).await?;
         let mut buf = [0; 8 * 1024];
         let mut hasher = Sha256::new();
         loop {
