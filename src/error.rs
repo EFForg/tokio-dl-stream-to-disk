@@ -7,6 +7,7 @@ pub enum ErrorKind {
     FileExists,
     DirectoryMissing,
     PermissionDenied,
+    InvalidResponse,
     IO(IOError),
     Other(Box<dyn StdError>),
 }
@@ -32,6 +33,7 @@ impl Error {
 	    ErrorKind::FileExists => None,
 	    ErrorKind::DirectoryMissing => None,
 	    ErrorKind::PermissionDenied => None,
+	    ErrorKind::InvalidResponse => None,
 	    ErrorKind::IO(err) => Some(err),
 	    ErrorKind::Other(_) => None,
 	}
@@ -42,6 +44,7 @@ impl Error {
 	    ErrorKind::FileExists => None,
 	    ErrorKind::DirectoryMissing => None,
 	    ErrorKind::PermissionDenied => None,
+	    ErrorKind::InvalidResponse => None,
 	    ErrorKind::IO(_) => None,
 	    ErrorKind::Other(err) => Some(err),
 	}
@@ -76,6 +79,7 @@ impl fmt::Display for Error {
             ErrorKind::FileExists => write!(f, "File already exists"),
             ErrorKind::DirectoryMissing => write!(f, "Destination path provided is not a valid directory"),
             ErrorKind::PermissionDenied => write!(f, "Cannot create file: permission denied"),
+            ErrorKind::InvalidResponse => write!(f, "Invalid response from the remote host"),
             ErrorKind::IO(err) => err.fmt(f),
             ErrorKind::Other(err) => err.fmt(f),
         }

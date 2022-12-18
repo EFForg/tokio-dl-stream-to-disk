@@ -12,10 +12,11 @@ A micro-library for downloading from a URL and streaming it directly to the disk
 
 ```rust
 use std::path::Path;
+use tokio_dl_stream_to_disk::AsyncDownload;
 
 #[tokio::main]
 async fn main() {
-    if tokio_dl_stream_to_disk::download("https://bit.ly/3yWXSOW", &Path::new("/tmp"), "5mb_test.bin").await.is_ok() {
+    if AsyncDownload::new("https://bit.ly/3yWXSOW", &Path::new("/tmp"), "5mb_test.bin").download(&None).await.is_ok() {
         println!("File downloaded successfully!");
     }
 }
