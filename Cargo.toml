@@ -13,7 +13,7 @@ sha256sum = ["sha2"]
 
 [dependencies]
 futures-util = { version = "0.3", features = ["io"] }
-reqwest = { version = "0.11", features = ["stream"] }
+reqwest = { version = "0.12", features = ["stream"] }
 bytes = "1"
 tokio-util = { version = "0.7", features = ["io"] }
 tokio = { version = "1", features = ["full"] }
