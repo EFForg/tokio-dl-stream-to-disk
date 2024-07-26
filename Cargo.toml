@@ -2,7 +2,7 @@
 name = "tokio-dl-stream-to-disk"
 version = "1.0.1"
 authors = ["William Budington <bill@eff.org>"]
-edition = "2018"
+edition = "2021"
 license = "MIT"
 description = "A micro-library for downloading from a URL and streaming it directly to the disk"
 homepage = "https://github.com/EFForg/tokio-dl-stream-to-disk"
