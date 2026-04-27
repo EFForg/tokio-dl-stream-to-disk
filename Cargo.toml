@@ -1,6 +1,6 @@
 [package]
 name = "tokio-dl-stream-to-disk"
-version = "1.0.1"
+version = "1.0.2"
 authors = ["William Budington <bill@eff.org>"]
 edition = "2021"
 license = "MIT"
@@ -13,8 +13,8 @@ sha256sum = ["sha2"]
 
 [dependencies]
 futures-util = { version = "0.3", features = ["io"] }
-reqwest = { version = "0.12", features = ["stream"] }
+reqwest = { version = "0.13", features = ["stream"] }
 bytes = "1"
 tokio-util = { version = "0.7", features = ["io"] }
 tokio = { version = "1", features = ["full"] }
-sha2 = { version = "0.10", optional = true }
+sha2 = { version = "0.11", optional = true }
