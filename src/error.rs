@@ -1,6 +1,6 @@
 use std::error::Error as StdError;
-use std::io::{Error as IOError, ErrorKind as IOErrorKind};
 use std::fmt;
+use std::io::{Error as IOError, ErrorKind as IOErrorKind};
 
 #[derive(Debug)]
 pub enum ErrorKind {
@@ -9,7 +9,7 @@ pub enum ErrorKind {
     PermissionDenied,
     InvalidResponse,
     IO(IOError),
-    Other(Box<dyn StdError>),
+    Other(Box<dyn StdError + Send + Sync>),
 }
 
 #[derive(Debug)]
@@ -17,11 +17,11 @@ pub struct Error {
     kind: ErrorKind,
 }
 
+impl StdError for Error {}
+
 impl Error {
     pub fn new(k: ErrorKind) -> Error {
-        Error {
-            kind: k,
-        }
+        Error { kind: k }
     }
 
     pub fn kind(&self) -> &ErrorKind {
@@ -29,25 +29,25 @@ impl Error {
     }
 
     pub fn into_inner_io(self) -> Option<IOError> {
-	match self.kind {
-	    ErrorKind::FileExists => None,
-	    ErrorKind::DirectoryMissing => None,
-	    ErrorKind::PermissionDenied => None,
-	    ErrorKind::InvalidResponse => None,
-	    ErrorKind::IO(err) => Some(err),
-	    ErrorKind::Other(_) => None,
-	}
+        match self.kind {
+            ErrorKind::FileExists => None,
+            ErrorKind::DirectoryMissing => None,
+            ErrorKind::PermissionDenied => None,
+            ErrorKind::InvalidResponse => None,
+            ErrorKind::IO(err) => Some(err),
+            ErrorKind::Other(_) => None,
+        }
     }
 
-    pub fn into_inner_other(self) -> Option<Box<dyn StdError>> {
-	match self.kind {
-	    ErrorKind::FileExists => None,
-	    ErrorKind::DirectoryMissing => None,
-	    ErrorKind::PermissionDenied => None,
-	    ErrorKind::InvalidResponse => None,
-	    ErrorKind::IO(_) => None,
-	    ErrorKind::Other(err) => Some(err),
-	}
+    pub fn into_inner_other(self) -> Option<Box<dyn StdError + Send + Sync>> {
+        match self.kind {
+            ErrorKind::FileExists => None,
+            ErrorKind::DirectoryMissing => None,
+            ErrorKind::PermissionDenied => None,
+            ErrorKind::InvalidResponse => None,
+            ErrorKind::IO(_) => None,
+            ErrorKind::Other(err) => Some(err),
+        }
     }
 }
 
@@ -65,11 +65,11 @@ impl From<IOError> for Error {
     }
 }
 
-impl From<Box<dyn StdError>> for Error {
-    fn from(err: Box<dyn StdError>) -> Error {
+impl From<Box<dyn StdError + Send + Sync>> for Error {
+    fn from(err: Box<dyn StdError + Send + Sync>) -> Error {
         Error {
             kind: ErrorKind::Other(err),
-	}
+        }
     }
 }
 
@@ -77,7 +77,9 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.kind() {
             ErrorKind::FileExists => write!(f, "File already exists"),
-            ErrorKind::DirectoryMissing => write!(f, "Destination path provided is not a valid directory"),
+            ErrorKind::DirectoryMissing => {
+                write!(f, "Destination path provided is not a valid directory")
+            }
             ErrorKind::PermissionDenied => write!(f, "Cannot create file: permission denied"),
             ErrorKind::InvalidResponse => write!(f, "Invalid response from the remote host"),
             ErrorKind::IO(err) => err.fmt(f),

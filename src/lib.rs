@@ -25,8 +25,8 @@ use bytes::Bytes;
 use futures_util::stream::Stream;
 use futures_util::StreamExt;
 
-#[cfg(feature="sha256sum")]
-use sha2::{Sha256, Digest};
+#[cfg(feature = "sha256sum")]
+use sha2::{Digest, Sha256};
 use tokio_util::io::StreamReader;
 
 use crate::error::{Error as TDSTDError, ErrorKind as TDSTDErrorKind};
@@ -39,7 +39,7 @@ pub struct AsyncDownload {
     dst_path: PathBuf,
     fname: String,
     length: Option<u64>,
-    response_stream: Option<Box<S>>
+    response_stream: Option<Box<S>>,
 }
 
 impl AsyncDownload {
@@ -56,40 +56,38 @@ impl AsyncDownload {
             dst_path: PathBuf::from(dst_path),
             fname: String::from(fname),
             length: None,
-            response_stream: None
+            response_stream: None,
         }
     }
 
     /// Returns the length of the download in bytes.  This should be called after calling [`get`]
     /// or [`download`].
     pub fn length(&self) -> Option<u64> {
-       self.length 
+        self.length
     }
 
     /// Get the download URL, but do not download it.  If successful, returns an `AsyncDownload`
     /// object with a response stream, which you can then call [`download`] on.  After this, the
     /// length of the download should also be known and you can call [`length`] on it.
-    pub async fn get(mut self) -> Result<AsyncDownload, Box<dyn Error>> {
+    pub async fn get(mut self) -> Result<AsyncDownload, Box<dyn Error + Send + Sync>> {
         self.get_non_consumable().await?;
         Ok(self)
     }
 
-    async fn get_non_consumable(&mut self) -> Result<(), Box<dyn Error>> {
-        let response = reqwest::get(self.url.clone())
-            .await?;
-        let content_length = response.headers().get("content-length").map_or(None, 
-            |l| {
-                match l.to_str() {
+    async fn get_non_consumable(&mut self) -> Result<(), Box<dyn Error + Send + Sync>> {
+        let response = reqwest::get(self.url.clone()).await?;
+        let content_length =
+            response
+                .headers()
+                .get("content-length")
+                .map_or(None, |l| match l.to_str() {
                     Err(_) => None,
-                    Ok(l_str) => {
-                        l_str.parse::<u64>().ok()
-                    }
-                }
-            });
-        self.response_stream = Some(Box::new(response
-            .error_for_status()?
-            .bytes_stream()
-            .map(|result| result.map_err(|e| IOError::new(ErrorKind::Other, e)))));
+                    Ok(l_str) => l_str.parse::<u64>().ok(),
+                });
+        self.response_stream =
+            Some(Box::new(response.error_for_status()?.bytes_stream().map(
+                |result| result.map_err(|e| IOError::new(ErrorKind::Other, e)),
+            )));
         self.length = content_length;
         Ok(())
     }
@@ -99,15 +97,20 @@ impl AsyncDownload {
     /// Arguments:
     /// * `cb` - An optional callback for reporting information about the download asynchronously.
     /// The callback takes the position of the current download, in bytes.
-    pub async fn download(&mut self, cb: &Option<Box<dyn Fn(u64) -> ()>>) -> Result<(), TDSTDError> {
+    pub async fn download(
+        &mut self,
+        cb: &Option<Box<dyn Fn(u64) -> ()>>,
+    ) -> Result<(), Box<dyn Error + Send + Sync>> {
         if self.response_stream.is_none() {
-            self.get_non_consumable().await.map_err(|_| TDSTDError::new(TDSTDErrorKind::InvalidResponse))?;
+            self.get_non_consumable()
+                .await
+                .map_err(|_| TDSTDError::new(TDSTDErrorKind::InvalidResponse))?;
         }
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
         let fname = self.dst_path.join(self.fname.clone());
         if fname.is_file() {
-            return Err(TDSTDError::new(TDSTDErrorKind::FileExists));
+            return Err(Box::new(TDSTDError::new(TDSTDErrorKind::FileExists)));
         }
 
         if self.dst_path.is_dir() {
@@ -130,23 +133,26 @@ impl AsyncDownload {
             }
             Ok(())
         } else {
-            Err(TDSTDError::new(TDSTDErrorKind::DirectoryMissing))
+            Err(Box::new(TDSTDError::new(TDSTDErrorKind::DirectoryMissing)))
         }
     }
 
-    #[cfg(feature="sha256sum")]
+    #[cfg(feature = "sha256sum")]
     /// Initiate the download and return a result with the sha256sum of the download contents.
     /// Specify an optional callback.
     ///
     /// Arguments:
     /// * `cb` - An optional callback for reporting information about the download asynchronously.
     /// The callback takes the position of the current download, in bytes.
-    pub async fn download_and_return_sha256sum(&mut self, cb: &Option<Box<dyn Fn(u64) -> ()>>) -> Result<Vec<u8>, TDSTDError> {
+    pub async fn download_and_return_sha256sum(
+        &mut self,
+        cb: &Option<Box<dyn Fn(u64) -> ()>>,
+    ) -> Result<Vec<u8>, Box<dyn Error + Send + Sync>> {
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
         let fname = self.dst_path.join(self.fname.clone());
         if fname.is_file() {
-            return Err(TDSTDError::new(TDSTDErrorKind::FileExists));
+            return Err(Box::new(TDSTDError::new(TDSTDErrorKind::FileExists)));
         }
 
         if self.dst_path.is_dir() {
@@ -171,7 +177,7 @@ impl AsyncDownload {
             }
             Ok(hasher.finalize().to_vec())
         } else {
-            Err(TDSTDError::new(TDSTDErrorKind::DirectoryMissing))
+            Err(Box::new(TDSTDError::new(TDSTDErrorKind::DirectoryMissing)))
         }
     }
 }
